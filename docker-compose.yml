@@ -1,0 +1,262 @@
+version: "3.9"
+
+# =============================================================================
+# Fusion Monitor — Full Stack
+# =============================================================================
+#
+# CONTAINER MAP:
+#
+#   zookeeper           Kafka cluster coordinator (internal only, no ports exposed)
+#   kafka               Message broker — all metrics flow through here
+#   kafka-ui            Provectus web UI to browse topics/messages  → :8090
+#   pushgateway         Prometheus Pushgateway — bridge pushes here  → :9091
+#   fusion-producer     Generates fusion reactor metrics → publishes to Kafka
+#   prometheus-bridge   Kafka consumer → pushes to Pushgateway every 5s
+#   timescale-writer    Kafka consumer → bulk inserts into TimescaleDB
+#   prometheus          Scrapes Pushgateway, stores TSDB              → :9090
+#   timescaledb         PostgreSQL + TimescaleDB extension             → :5432
+#   pgadmin             Web UI for browsing TimescaleDB/Postgres       → :5050
+#   grafana             Dashboards fed by Prometheus                   → :3000
+#   fusion-ui           React frontend, pulls from Prometheus API      → :8080
+#
+# DATA FLOW:
+#   fusion-producer
+#       └─→ Kafka topic: metrics.fusion-reactor
+#               ├─→ prometheus-bridge → pushgateway → prometheus → grafana / fusion-ui
+#               └─→ timescale-writer  → timescaledb (long-term storage)
+#
+# =============================================================================
+
+services:
+
+  # ── KAFKA STACK ─────────────────────────────────────────────────────────────
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME:   2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "29092:29092"     # host access on 29092 (internal broker uses 9092)
+    environment:
+      KAFKA_BROKER_ID:                        1
+      KAFKA_ZOOKEEPER_CONNECT:                zookeeper:2181
+      # PLAINTEXT      = inter-container traffic on port 9092
+      # PLAINTEXT_HOST = host-machine access on port 29092 (different port = no conflict)
+      KAFKA_LISTENERS:                        PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS:             PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:   PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME:       PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE:        "true"
+      KAFKA_LOG_RETENTION_HOURS:              168     # 7 days on-bus retention
+      KAFKA_LOG_SEGMENT_BYTES:                104857600
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS:  300000
+      KAFKA_NUM_PARTITIONS:                   3
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME:             fusion-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER:        zookeeper:2181
+    restart: unless-stopped
+
+  # ── PUSHGATEWAY ─────────────────────────────────────────────────────────────
+
+  pushgateway:
+    image: prom/pushgateway:v1.8.0
+    container_name: pushgateway
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9091/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── PRODUCERS ───────────────────────────────────────────────────────────────
+
+  fusion-producer:
+    build:
+      context: ./producers/fusion
+      dockerfile: Dockerfile
+    container_name: fusion-producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP:  kafka:9092
+      KAFKA_TOPIC:      metrics.fusion-reactor
+      PUBLISH_INTERVAL: "5"
+    restart: unless-stopped
+
+  # ── CONSUMERS ───────────────────────────────────────────────────────────────
+
+  prometheus-bridge:
+    build:
+      context: ./consumers/prometheus-bridge
+      dockerfile: Dockerfile
+    container_name: prometheus-bridge
+    depends_on:
+      kafka:
+        condition: service_healthy
+      pushgateway:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP:  kafka:9092
+      KAFKA_TOPICS:     metrics.fusion-reactor
+      KAFKA_GROUP_ID:   prometheus-bridge
+      PUSHGATEWAY_URL:  http://pushgateway:9091
+      PUSH_INTERVAL_S:  "5"
+    restart: unless-stopped
+
+  timescale-writer:
+    build:
+      context: ./consumers/timescale-writer
+      dockerfile: Dockerfile
+    container_name: timescale-writer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP:   kafka:9092
+      KAFKA_TOPICS:      metrics.fusion-reactor
+      KAFKA_GROUP_ID:    timescale-writer
+      PG_DSN:            postgresql://fusion:fusion2026@timescaledb:5432/fusiondb
+      BATCH_SIZE:        "200"
+      FLUSH_INTERVAL_S:  "5"
+    restart: unless-stopped
+
+  # ── STORAGE ─────────────────────────────────────────────────────────────────
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB:       fusiondb
+      POSTGRES_USER:     fusion
+      POSTGRES_PASSWORD: fusion2026
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fusion -d fusiondb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@fusion-monitor.com
+      PGADMIN_DEFAULT_PASSWORD: fusion2026
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+
+  # ── PROMETHEUS ───────────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    depends_on:
+      pushgateway:
+        condition: service_healthy
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  # ── GRAFANA ──────────────────────────────────────────────────────────────────
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: fusion2026
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # ── REACT FRONTEND ───────────────────────────────────────────────────────────
+
+  fusion-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fusion-ui
+    depends_on:
+      - prometheus
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  timescale_data:
+  pgadmin_data:
+  prometheus_data:
+  grafana_data:

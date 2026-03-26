@@ -1,0 +1,669 @@
+{
+  "uid": "fusion-reactor-v1",
+  "title": "Fusion Reactor FRP-001 — Live Monitor",
+  "description": "Real-time telemetry dashboard for Tokamak prototype FRP-001",
+  "tags": ["fusion", "plasma", "tokamak"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+
+    { "id": 1, "type": "row", "title": "🔥 PLASMA CORE", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 2, "title": "Plasma Temperature",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "minVizWidth": 75, "minVizHeight": 75
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Plasma Temp (keV)",
+          "min": 0, "max": 25,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow","value": 18 },
+              { "color": "red",   "value": 22 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_plasma_temperature_keV", "legendFormat": "Temp keV", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 3, "title": "Q Factor (Gain)",
+      "type": "gauge",
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Q Factor",
+          "min": 0, "max": 15,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green",  "value": 5 },
+              { "color": "#00ffcc","value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_plasma_gain_Q", "legendFormat": "Q", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 4, "title": "Fusion Power Output",
+      "type": "gauge",
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Fusion Power (MW)",
+          "min": 0, "max": 600,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 300 },
+              { "color": "yellow","value": 480 },
+              { "color": "red",   "value": 550 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_plasma_fusion_power_MW", "legendFormat": "MW", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 5, "title": "Disruption Risk",
+      "type": "gauge",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "displayName": "Disruption Risk",
+          "min": 0, "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "orange", "value": 40 },
+              { "color": "red",    "value": 70 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_mag_disruption_risk_percent", "legendFormat": "Risk %", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 6, "title": "Plasma Beta",
+      "type": "gauge",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Plasma Beta",
+          "min": 0, "max": 0.15,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",   "value": null },
+              { "color": "green",  "value": 0.02 },
+              { "color": "yellow", "value": 0.08 },
+              { "color": "red",    "value": 0.12 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_plasma_beta_value", "legendFormat": "β", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 7, "title": "Ion Temperature (keV)",
+      "type": "gauge",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Ion Temp (keV)",
+          "min": 0, "max": 25,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",   "value": null },
+              { "color": "green",  "value": 10 },
+              { "color": "yellow", "value": 18 },
+              { "color": "red",    "value": 22 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_diag_ion_temperature_keV", "legendFormat": "Ti keV", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 10, "title": "Plasma Temperature & Ion Temp — History",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 7, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Ion Temp" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#ff9900", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        { "expr": "fusion_plasma_temperature_keV",    "legendFormat": "Electron Temp keV", "datasource": "Prometheus" },
+        { "expr": "fusion_diag_ion_temperature_keV",  "legendFormat": "Ion Temp",           "datasource": "Prometheus" }
+      ]
+    },
+
+    {
+      "id": 11, "title": "Fusion Power vs Heating Power",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 7, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 15 } }
+      },
+      "targets": [
+        { "expr": "fusion_plasma_fusion_power_MW",   "legendFormat": "Fusion Power MW",   "datasource": "Prometheus" },
+        { "expr": "fusion_plasma_heating_power_MW",  "legendFormat": "Heating Power MW",  "datasource": "Prometheus" },
+        { "expr": "fusion_power_net_electrical_MW",  "legendFormat": "Net Electrical MW",  "datasource": "Prometheus" }
+      ]
+    },
+
+    { "id": 20, "type": "row", "title": "🧲 MAGNETIC SYSTEMS", "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 21, "title": "Toroidal Field (T)",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 15, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Toroidal B (T)",
+          "min": 0, "max": 8,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null }, { "color": "green", "value": 4 },
+            { "color": "yellow", "value": 6.5 }, { "color": "red", "value": 7.5 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_mag_toroidal_field_tesla", "legendFormat": "BT", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 22, "title": "Plasma Current (MA)",
+      "type": "gauge",
+      "gridPos": { "x": 4, "y": 15, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Ip (MA)",
+          "min": 0, "max": 20,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue",  "value": null }, { "color": "green",  "value": 8 },
+            { "color": "yellow","value": 17 },   { "color": "red",    "value": 19 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_mag_plasma_current_MA", "legendFormat": "Ip", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 23, "title": "ELM Frequency (Hz)",
+      "type": "gauge",
+      "gridPos": { "x": 8, "y": 15, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Hz", "displayName": "ELM Freq",
+          "min": 0, "max": 50,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null }, { "color": "yellow", "value": 30 },
+            { "color": "red",    "value": 45 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_mag_ELM_frequency_Hz", "legendFormat": "ELM Hz", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 24, "title": "Magnetic Fields — History",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "none", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "expr": "fusion_mag_toroidal_field_tesla",  "legendFormat": "Toroidal (T)", "datasource": "Prometheus" },
+        { "expr": "fusion_mag_poloidal_field_tesla",  "legendFormat": "Poloidal (T)", "datasource": "Prometheus" },
+        { "expr": "fusion_mag_plasma_current_MA",     "legendFormat": "Ip (MA)",      "datasource": "Prometheus" }
+      ]
+    },
+
+    { "id": 30, "type": "row", "title": "🌡️ THERMAL & COOLING", "gridPos": { "x": 0, "y": 20, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 31, "title": "Inner Divertor Temp",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 21, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius", "displayName": "Inner Div °C",
+          "min": 0, "max": 2000,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null }, { "color": "green", "value": 400 },
+            { "color": "yellow","value": 1000 }, { "color": "red", "value": 1500 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_divertor_temp_inner_C", "legendFormat": "Inner °C", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 32, "title": "Outer Divertor Temp",
+      "type": "gauge",
+      "gridPos": { "x": 4, "y": 21, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius", "displayName": "Outer Div °C",
+          "min": 0, "max": 2000,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null }, { "color": "green", "value": 400 },
+            { "color": "orange","value": 1100 }, { "color": "red", "value": 1600 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_divertor_temp_outer_C", "legendFormat": "Outer °C", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 33, "title": "First Wall Temp",
+      "type": "gauge",
+      "gridPos": { "x": 8, "y": 21, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius", "displayName": "Wall °C",
+          "min": 0, "max": 800,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue",  "value": null }, { "color": "green",  "value": 150 },
+            { "color": "yellow","value": 450 },  { "color": "red",    "value": 650 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_divertor_temp_wall_C", "legendFormat": "Wall °C", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 34, "title": "Coolant Outlet Temp",
+      "type": "gauge",
+      "gridPos": { "x": 12, "y": 21, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius", "displayName": "Coolant Out °C",
+          "min": 0, "max": 250,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue",  "value": null }, { "color": "green",  "value": 80 },
+            { "color": "yellow","value": 175 },  { "color": "red",    "value": 220 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_cooling_outlet_temp_C", "legendFormat": "Outlet °C", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 35, "title": "Cryo He Temp (K)",
+      "type": "gauge",
+      "gridPos": { "x": 16, "y": 21, "w": 4, "h": 5 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Cryo He (K)",
+          "min": 0, "max": 20,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "#8080ff","value": null }, { "color": "green", "value": 4 },
+            { "color": "yellow", "value": 7 },   { "color": "red",   "value": 12 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_cryo_helium_temp_K", "legendFormat": "He K", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 36, "title": "Divertor Heat Flux (MW/m²)",
+      "type": "timeseries",
+      "gridPos": { "x": 20, "y": 21, "w": 4, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+      "targets": [
+        { "expr": "fusion_divertor_heatflux_inner_MW_m2", "legendFormat": "Inner",     "datasource": "Prometheus" },
+        { "expr": "fusion_divertor_heatflux_outer_MW_m2", "legendFormat": "Outer",     "datasource": "Prometheus" },
+        { "expr": "fusion_divertor_heatflux_wall_MW_m2",  "legendFormat": "Wall",      "datasource": "Prometheus" }
+      ]
+    },
+
+    { "id": 40, "type": "row", "title": "☢️ TRITIUM & RADIATION", "gridPos": { "x": 0, "y": 26, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 41, "title": "Tritium Inventory (g)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 27, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "T Inventory (g)",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 300 }, { "color": "green", "value": 380 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_tritium_inventory_grams", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 42, "title": "Tritium Breeding Ratio",
+      "type": "gauge",
+      "gridPos": { "x": 4, "y": 27, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "TBR",
+          "min": 0, "max": 1.5,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red",    "value": null }, { "color": "yellow", "value": 1.0 },
+            { "color": "green",  "value": 1.05 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_tritium_breeding_ratio", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 43, "title": "Neutron Flux (×10¹⁴ /cm²s)",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 27, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Neutron Flux",
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 5e14 }, { "color": "red", "value": 8e14 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_rad_neutron_flux_per_cm2_s", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 44, "title": "Gamma — Control Room (mSv/hr)",
+      "type": "gauge",
+      "gridPos": { "x": 12, "y": 27, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "CR Gamma mSv/hr",
+          "min": 0, "max": 0.02,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 0.005 }, { "color": "red", "value": 0.01 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_rad_gamma_control_room_mSv_hr", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 45, "title": "Tritium Airborne (Bq/m³)",
+      "type": "gauge",
+      "gridPos": { "x": 16, "y": 27, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "T Airborne Bq/m³",
+          "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 40 }, { "color": "red", "value": 75 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_tritium_airborne_Bq_per_m3", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 46, "title": "Radiation — History",
+      "type": "timeseries",
+      "gridPos": { "x": 20, "y": 27, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "none", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "expr": "fusion_rad_neutron_wall_loading_MW_m2",    "legendFormat": "Wall Load MW/m²", "datasource": "Prometheus" },
+        { "expr": "fusion_rad_gamma_hall_mSv_hr * 1000",     "legendFormat": "Hall γ μSv/hr",   "datasource": "Prometheus" }
+      ]
+    },
+
+    { "id": 50, "type": "row", "title": "⚡ POWER & EFFICIENCY", "gridPos": { "x": 0, "y": 31, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 51, "title": "Net Electrical Output",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 32, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Net Electrical (MW)",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 100 }, { "color": "green", "value": 150 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_power_net_electrical_MW", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 52, "title": "Plant Efficiency (%)",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 32, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "displayName": "Efficiency %",
+          "min": 0, "max": 60,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 25 }, { "color": "green", "value": 32 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_power_plant_efficiency_percent", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 53, "title": "Power Balance (MW)",
+      "type": "timeseries",
+      "gridPos": { "x": 10, "y": 32, "w": 14, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "targets": [
+        { "expr": "fusion_power_gross_thermal_MW",    "legendFormat": "Gross Thermal",    "datasource": "Prometheus" },
+        { "expr": "fusion_power_net_electrical_MW",   "legendFormat": "Net Electrical",   "datasource": "Prometheus" },
+        { "expr": "fusion_power_recirculating_MW",    "legendFormat": "Recirculating",    "datasource": "Prometheus" }
+      ]
+    },
+
+    { "id": 60, "type": "row", "title": "📊 PERFORMANCE KPIs", "gridPos": { "x": 0, "y": 36, "w": 24, "h": 1 }, "collapsed": false },
+
+    {
+      "id": 61, "title": "30-Day Availability",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "displayName": "Availability 30d",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 90 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_perf_availability_30d_percent", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 62, "title": "MTBD (hours)",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "MTBD (hr)",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 48 }, { "color": "green", "value": 100 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_perf_MTBD_hours", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 63, "title": "Active Alarms",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Active Alarms",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_alarms_active_total", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 64, "title": "Warnings (24h)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Warnings 24h",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 3 }, { "color": "red", "value": 10 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_alarms_warnings_24h", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 65, "title": "Fusion Rate (×10²⁰ /s)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "displayName": "Fusion Rate /s",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null }, { "color": "green", "value": 1e20 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [{ "expr": "fusion_diag_measured_fusion_rate_per_s", "datasource": "Prometheus" }]
+    },
+
+    {
+      "id": 66, "title": "NBI & ECRH Efficiency (%)",
+      "type": "bargauge",
+      "gridPos": { "x": 20, "y": 37, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "displayMode": "gradient" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 85 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "fusion_heat_nbi_efficiency_percent",  "legendFormat": "NBI",  "datasource": "Prometheus" },
+        { "expr": "fusion_heat_ecrh_efficiency_percent", "legendFormat": "ECRH", "datasource": "Prometheus" }
+      ]
+    }
+
+  ]
+}

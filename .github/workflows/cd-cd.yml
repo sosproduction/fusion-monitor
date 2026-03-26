@@ -1,0 +1,227 @@
+name: CI/CD — Build, Push to ECR, Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION:         us-east-1
+  ECR_REGISTRY:       ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ECS_CLUSTER:        fusion-monitor-cluster
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. Run tests / lint before building ────────────────────────────────────
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install producer deps and lint
+        run: |
+          pip install flake8 confluent-kafka psycopg2-binary requests
+          flake8 producers/fusion/fusion_producer.py --max-line-length=120 --ignore=E501
+          flake8 consumers/prometheus-bridge/prometheus_bridge.py --max-line-length=120 --ignore=E501
+          flake8 consumers/timescale-writer/timescale_writer.py --max-line-length=120 --ignore=E501
+
+      - name: Set up Node 20 and lint React
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend (verify it compiles)
+        working-directory: frontend
+        run: npm run build
+
+  # ── 2. Build Docker images and push to ECR ─────────────────────────────────
+  build-and-push:
+    name: Build & Push Images to ECR
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    outputs:
+      fusion-producer-tag:    ${{ steps.meta.outputs.fusion-producer }}
+      prometheus-bridge-tag:  ${{ steps.meta.outputs.prometheus-bridge }}
+      timescale-writer-tag:   ${{ steps.meta.outputs.timescale-writer }}
+      fusion-ui-tag:          ${{ steps.meta.outputs.fusion-ui }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Short SHA for image tagging — gives us immutable, traceable images
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      # Build and push all 4 custom images in parallel using a matrix
+      - name: Build & push fusion-producer
+        run: |
+          docker build -t $ECR_REGISTRY/fusion-producer:${{ steps.tag.outputs.TAG }} \
+                       -t $ECR_REGISTRY/fusion-producer:latest \
+                       ./producers/fusion
+          docker push $ECR_REGISTRY/fusion-producer:${{ steps.tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fusion-producer:latest
+
+      - name: Build & push prometheus-bridge
+        run: |
+          docker build -t $ECR_REGISTRY/prometheus-bridge:${{ steps.tag.outputs.TAG }} \
+                       -t $ECR_REGISTRY/prometheus-bridge:latest \
+                       ./consumers/prometheus-bridge
+          docker push $ECR_REGISTRY/prometheus-bridge:${{ steps.tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/prometheus-bridge:latest
+
+      - name: Build & push timescale-writer
+        run: |
+          docker build -t $ECR_REGISTRY/timescale-writer:${{ steps.tag.outputs.TAG }} \
+                       -t $ECR_REGISTRY/timescale-writer:latest \
+                       ./consumers/timescale-writer
+          docker push $ECR_REGISTRY/timescale-writer:${{ steps.tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/timescale-writer:latest
+
+      - name: Build & push fusion-ui
+        run: |
+          docker build -t $ECR_REGISTRY/fusion-ui:${{ steps.tag.outputs.TAG }} \
+                       -t $ECR_REGISTRY/fusion-ui:latest \
+                       ./frontend
+          docker push $ECR_REGISTRY/fusion-ui:${{ steps.tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fusion-ui:latest
+
+      - name: Save image tag as artifact
+        run: echo "${{ steps.tag.outputs.TAG }}" > image-tag.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: image-tag.txt
+
+  # ── 3. Deploy to ECS Fargate ───────────────────────────────────────────────
+  deploy:
+    name: Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production      # requires manual approval in GitHub Environments
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: image-tag
+
+      - name: Read image tag
+        id: tag
+        run: echo "TAG=$(cat image-tag.txt)" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      # Update each ECS service with the new image tag
+      - name: Deploy fusion-producer
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service fusion-producer \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      - name: Deploy prometheus-bridge
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service prometheus-bridge \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      - name: Deploy timescale-writer
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service timescale-writer \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      - name: Deploy fusion-ui
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service fusion-ui \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      - name: Deploy grafana
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service grafana \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      # Wait for all services to stabilise before marking deployment successful
+      - name: Wait for fusion-ui to stabilise
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services fusion-ui \
+            --region $AWS_REGION
+
+      - name: Wait for grafana to stabilise
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services grafana \
+            --region $AWS_REGION
+
+      - name: Deployment complete
+        run: |
+          echo "✅ Deployment complete — SHA ${{ steps.tag.outputs.TAG }}"
+          echo "🌐 Dashboard: https://${{ secrets.APP_DOMAIN }}"
+          echo "📊 Grafana:   https://grafana.${{ secrets.APP_DOMAIN }}"
+
+  # ── 4. Notify on failure ────────────────────────────────────────────────────
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [test, build-and-push, deploy]
+    if: failure()
+    steps:
+      - name: Post failure to Slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "❌ Fusion Monitor deploy FAILED on `${{ github.ref_name }}` by @${{ github.actor }}\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

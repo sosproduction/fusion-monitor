@@ -1,0 +1,18 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+
+scrape_configs:
+
+  # ── Pushgateway — receives metrics from the Kafka bridge ─────────────────
+  # This replaces the direct fusion-exporter scrape target.
+  # All origins (fusion, k8s, hpc) arrive here via the bridge.
+  - job_name: "pushgateway"
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+
+  # ── Prometheus self-monitoring ────────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
