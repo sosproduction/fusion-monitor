@@ -33,9 +33,6 @@ A **full-stack real-time monitoring platform** for a fusion reactor prototype, b
 ### Plasma Core — Analog Gauge Detail  
 ![Plasma Gauges](docs/screenshots/dashboard-plasma-gauges.png)
 
-### Grafana — Operations Dashboard
-![Grafana](docs/screenshots/grafana-dashboard.png)
-
 ### Kafka UI — Live Message Stream
 ![Kafka](docs/screenshots/kafka-messages.png)
 
