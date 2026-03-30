@@ -480,12 +480,12 @@ docker compose down --volumes
 | Service | URL | Credentials |
 |---|---|---|
 | ⚛️ **React Dashboard** | http://localhost:8080 | — |
-| 📊 **Grafana** | http://localhost:3000 | `admin` / `fusion2026` |
-| 🗄️ **pgAdmin** | http://localhost:5050 | `admin@fusion-monitor.com` / `fusion2026` |
-| 🔥 **Kafka UI** | http://localhost:8090 | — |
+| 📊 **Grafana** | http://localhost:3000 | - |
+| 🗄️ **pgAdmin** | http://localhost:5050 | - |
+| 🔥 **Kafka UI** | http://localhost:8090 | - |
 | 📡 **Prometheus** | http://localhost:9090 | — |
 | 📬 **Pushgateway** | http://localhost:9091 | — |
-| 🐘 **TimescaleDB** | `localhost:5432` | db `fusiondb` user `fusion` / `fusion2026` |
+| 🐘 **TimescaleDB** | `localhost:5432` | |
 | 📦 **Kafka Broker** (host) | `localhost:29092` | — |
 
 ---
