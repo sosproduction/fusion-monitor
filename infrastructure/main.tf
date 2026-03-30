@@ -59,10 +59,10 @@ module "vpc" {
 # Security Groups
 # =============================================================================
 
-# ALB — accepts HTTP/HTTPS from anywhere
+# ALB -- accepts HTTP/HTTPS from anywhere
 resource "aws_security_group" "alb" {
   name        = "${var.project}-alb-sg"
-  description = "ALB inbound HTTP/HTTPS"
+  description = "ALB inbound HTTP and HTTPS"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -85,10 +85,10 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# ECS tasks — accept traffic from ALB only
+# ECS tasks -- accept traffic from ALB only
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project}-ecs-sg"
-  description = "ECS tasks — inbound from ALB and inter-service"
+  description = "ECS tasks inbound from ALB and inter-service"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -97,7 +97,6 @@ resource "aws_security_group" "ecs_tasks" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
-  # Allow all inter-container traffic within the security group
   ingress {
     from_port = 0
     to_port   = 65535
@@ -112,10 +111,10 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
-# MSK (Kafka) — accept from ECS tasks only
+# MSK (Kafka) -- accept from ECS tasks only
 resource "aws_security_group" "msk" {
   name        = "${var.project}-msk-sg"
-  description = "MSK Kafka — inbound from ECS tasks"
+  description = "MSK Kafka inbound from ECS tasks"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -132,10 +131,10 @@ resource "aws_security_group" "msk" {
   }
 }
 
-# RDS — accept from ECS tasks only
+# RDS -- accept from ECS tasks only
 resource "aws_security_group" "rds" {
   name        = "${var.project}-rds-sg"
-  description = "RDS TimescaleDB — inbound from ECS tasks"
+  description = "RDS TimescaleDB inbound from ECS tasks"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -350,7 +349,7 @@ resource "aws_acm_certificate_validation" "main" {
 # =============================================================================
 
 data "aws_route53_zone" "main" {
-  name         = var.domain
+  name         = var.hosted_zone_name    # parent zone e.g. "southofsleep.com"
   private_zone = false
 }
 

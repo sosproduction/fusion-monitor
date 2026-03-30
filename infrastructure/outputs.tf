@@ -29,9 +29,9 @@ output "kafka_bootstrap_brokers" {
   sensitive   = true
 }
 
-output "rds_endpoint" {
-  description = "TimescaleDB RDS endpoint"
-  value       = aws_db_instance.timescaledb.address
+output "timescaledb_efs_id" {
+  description = "EFS file system ID for TimescaleDB persistent storage"
+  value       = aws_efs_file_system.timescaledb.id
 }
 
 output "ecr_registry" {

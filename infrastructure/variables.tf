@@ -21,9 +21,13 @@ variable "environment" {
 }
 
 variable "domain" {
-  description = "Root domain name — must have a Route 53 hosted zone"
+  description = "Full subdomain for the app e.g. fusion-monitor.southofsleep.com"
   type        = string
-  # e.g. "fusion-monitor.yourdomain.com"
+}
+
+variable "hosted_zone_name" {
+  description = "The Route 53 hosted zone root domain e.g. southofsleep.com"
+  type        = string
 }
 
 variable "account_id" {

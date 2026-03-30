@@ -217,7 +217,9 @@ def generate_metrics(t: float) -> list[dict]:
 def wait_for_kafka(bootstrap: str, retries: int = 20, delay: float = 3.0):
     """Block until Kafka is reachable."""
     import socket
-    host, port = bootstrap.split(":")
+    # MSK returns multiple brokers e.g. "b-1.xxx:9092,b-2.xxx:9092"
+    first_broker = bootstrap.split(",")[0]
+    host, port = first_broker.rsplit(":", 1)
     for i in range(retries):
         try:
             with socket.create_connection((host, int(port)), timeout=3):

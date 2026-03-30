@@ -119,12 +119,12 @@ resource "aws_ecs_task_definition" "timescale_writer" {
       { name = "KAFKA_TOPICS",      value = "metrics.fusion-reactor" },
       { name = "KAFKA_GROUP_ID",    value = "timescale-writer" },
       { name = "BATCH_SIZE",        value = "200" },
-      { name = "FLUSH_INTERVAL_S",  value = "5" }
+      { name = "FLUSH_INTERVAL_S",  value = "5" },
+      { name = "PG_DSN",            value = "postgresql://fusion@timescaledb.${var.project}.local:5432/fusiondb" }
     ]
     secrets = [
       { name = "KAFKA_BOOTSTRAP", valueFrom = "/${var.project}/KAFKA_BOOTSTRAP" },
-      { name = "DB_HOST",         valueFrom = "/${var.project}/DB_HOST" },
-      { name = "DB_PASSWORD",     valueFrom = "/${var.project}/DB_PASSWORD" }
+      { name = "PGPASSWORD",      valueFrom = "/${var.project}/DB_PASSWORD" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -161,7 +161,7 @@ resource "aws_ecs_task_definition" "prometheus" {
 
   container_definitions = jsonencode([{
     name      = "prometheus"
-    image     = "prom/prometheus:v2.51.0"
+    image     = "245013469638.dkr.ecr.us-east-1.amazonaws.com/prometheus-configured:latest"
     essential = true
     portMappings = [{ containerPort = 9090, protocol = "tcp" }]
     command = [
@@ -208,6 +208,10 @@ resource "aws_ecs_service" "prometheus" {
     target_group_arn = aws_lb_target_group.prometheus.arn
     container_name   = "prometheus"
     container_port   = 9090
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.prometheus.arn
   }
 }
 
@@ -343,6 +347,10 @@ resource "aws_ecs_service" "pushgateway" {
     subnets         = module.vpc.private_subnets
     security_groups = [aws_security_group.ecs_tasks.id]
   }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.pushgateway.arn
+  }
 }
 
 # kafka-ui ────────────────────────────────────────────────────────────────────
@@ -405,9 +413,10 @@ resource "aws_efs_file_system" "prometheus_config" {
   encrypted        = true
 }
 
+# Use static numeric keys so Terraform can plan without knowing subnet IDs yet
 resource "aws_efs_mount_target" "prometheus_config" {
-  for_each        = toset(module.vpc.private_subnets)
+  count           = length(module.vpc.private_subnets)
   file_system_id  = aws_efs_file_system.prometheus_config.id
-  subnet_id       = each.value
+  subnet_id       = module.vpc.private_subnets[count.index]
   security_groups = [aws_security_group.ecs_tasks.id]
 }

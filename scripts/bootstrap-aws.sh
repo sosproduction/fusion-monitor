@@ -10,7 +10,7 @@ set -euo pipefail
 AWS_REGION="us-east-1"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 PROJECT="fusion-monitor"
-DOMAIN="fusion-monitor.yourdomain.com"   # ← change to your domain
+DOMAIN="fusion-monitor.southofsleep.com" 
 
 echo "▶ Bootstrapping Fusion Monitor AWS infrastructure"
 echo "  Account:  $AWS_ACCOUNT_ID"
@@ -20,11 +20,28 @@ echo ""
 
 # ── 1. Terraform remote state S3 bucket ──────────────────────────────────────
 echo "▶ Creating Terraform state S3 bucket..."
-aws s3api create-bucket \
-    --bucket "${PROJECT}-tfstate" \
-    --region "$AWS_REGION" \
-    --create-bucket-configuration LocationConstraint="$AWS_REGION" \
-    2>/dev/null || echo "  (bucket already exists)"
+#aws s3api create-bucket \
+#    --bucket "${PROJECT}-tfstate" \
+#    --region "$AWS_REGION" \
+#    --create-bucket-configuration LocationConstraint="$AWS_REGION" \
+#    2>/dev/null || echo "  (bucket already exists)"
+
+if ! aws s3api head-bucket --bucket "${PROJECT}-tfstate" 2>/dev/null; then
+    echo "▶ Creating Terraform state S3 bucket..."
+    if [ "$AWS_REGION" = "us-east-1" ]; then
+        aws s3api create-bucket \
+            --bucket "${PROJECT}-tfstate" \
+            --region "$AWS_REGION"
+    else
+        aws s3api create-bucket \
+            --bucket "${PROJECT}-tfstate" \
+            --region "$AWS_REGION" \
+            --create-bucket-configuration LocationConstraint="$AWS_REGION"
+    fi
+    echo "  ✅ S3 bucket created"
+else
+    echo "  ✅ Bucket already exists"
+fi
 
 aws s3api put-bucket-versioning \
     --bucket "${PROJECT}-tfstate" \

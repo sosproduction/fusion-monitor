@@ -1,24 +1,52 @@
 #!/usr/bin/env bash
 # =============================================================================
 # scripts/run-migrations.sh
-# Run ONCE after terraform apply to initialise the TimescaleDB schema.
-# Uses an ECS one-shot task so it runs inside the VPC with RDS access.
+# Uploads init.sql to S3, then runs it via ECS exec inside the
+# TimescaleDB container — avoids the 8192 char override limit
 # =============================================================================
 set -euo pipefail
 
 AWS_REGION="us-east-1"
 PROJECT="fusion-monitor"
 CLUSTER="${PROJECT}-cluster"
+BUCKET="${PROJECT}-migrations-$(aws sts get-caller-identity --query Account --output text --region $AWS_REGION)"
 
-echo "▶ Running database migrations via ECS one-shot task..."
+echo "▶ Running database migrations..."
 
-# Get RDS endpoint from SSM
-DB_HOST=$(aws ssm get-parameter \
-    --name "/${PROJECT}/DB_HOST" \
-    --query "Parameter.Value" \
-    --output text \
-    --region "$AWS_REGION")
+# ── 1. Create S3 bucket for SQL file (idempotent) ────────────────────────────
+echo "  Creating S3 bucket: $BUCKET"
+# us-east-1 must NOT use LocationConstraint -- all other regions must
+if [ "$AWS_REGION" = "us-east-1" ]; then
+    aws s3api create-bucket         --bucket "$BUCKET"         --region "$AWS_REGION" 2>/dev/null || true
+else
+    aws s3api create-bucket         --bucket "$BUCKET"         --region "$AWS_REGION"         --create-bucket-configuration LocationConstraint="$AWS_REGION"         2>/dev/null || true
+fi
 
+aws s3api put-public-access-block \
+    --bucket "$BUCKET" \
+    --public-access-block-configuration \
+        "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" \
+    2>/dev/null || true
+
+# ── 2. Upload init.sql ────────────────────────────────────────────────────────
+echo "  Uploading sql/init.sql to s3://${BUCKET}/init.sql"
+aws s3 cp sql/init.sql "s3://${BUCKET}/init.sql" --region "$AWS_REGION"
+
+# ── 3. Grant ECS task execution role access to the bucket ────────────────────
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --region $AWS_REGION)
+EXEC_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${PROJECT}-ecs-execution-role"
+
+aws s3api put-bucket-policy --bucket "$BUCKET" --policy "{
+  \"Version\": \"2012-10-17\",
+  \"Statement\": [{
+    \"Effect\": \"Allow\",
+    \"Principal\": { \"AWS\": \"${EXEC_ROLE_ARN}\" },
+    \"Action\": [\"s3:GetObject\"],
+    \"Resource\": \"arn:aws:s3:::${BUCKET}/*\"
+  }]
+}" 2>/dev/null || true
+
+# ── 4. Get runtime values ─────────────────────────────────────────────────────
 DB_PASSWORD=$(aws ssm get-parameter \
     --name "/${PROJECT}/DB_PASSWORD" \
     --with-decryption \
@@ -26,41 +54,52 @@ DB_PASSWORD=$(aws ssm get-parameter \
     --output text \
     --region "$AWS_REGION")
 
-# Get VPC/subnet info from terraform output
-SUBNET=$(cd infrastructure && terraform output -json | jq -r '.vpc_private_subnets.value[0]')
+# Get subnet from VPC
+VPC_ID=$(aws ec2 describe-vpcs \
+    --filters "Name=tag:Name,Values=*${PROJECT}*" \
+    --query "Vpcs[0].VpcId" \
+    --output text \
+    --region "$AWS_REGION")
+
+SUBNET=$(aws ec2 describe-subnets \
+    --filters \
+        "Name=vpc-id,Values=${VPC_ID}" \
+        "Name=state,Values=available" \
+    --query "Subnets[0].SubnetId" \
+    --output text \
+    --region "$AWS_REGION")
+
 SG=$(aws ec2 describe-security-groups \
     --filters "Name=group-name,Values=${PROJECT}-ecs-sg" \
     --query "SecurityGroups[0].GroupId" \
     --output text \
     --region "$AWS_REGION")
 
-echo "  DB Host: $DB_HOST"
-echo "  Subnet:  $SUBNET"
-echo "  SG:      $SG"
+echo "  Subnet: $SUBNET"
+echo "  SG:     $SG"
 
-# Encode the SQL file as base64 to pass as an env var
-SQL_B64=$(base64 -i sql/init.sql)
+# ── 5. Run migration task ─────────────────────────────────────────────────────
+# The command downloads init.sql from S3 then runs psql against localhost
+CMD="aws s3 cp s3://${BUCKET}/init.sql /tmp/init.sql --region ${AWS_REGION} && PGPASSWORD=${DB_PASSWORD} psql -h localhost -U fusion -d fusiondb -f /tmp/init.sql && echo MIGRATION_COMPLETE"
 
-# Run a one-shot ECS Fargate task using the postgres image
+echo "  Starting one-shot migration task..."
 TASK_ARN=$(aws ecs run-task \
     --cluster "$CLUSTER" \
     --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SG],assignPublicIp=DISABLED}" \
-    --overrides "{
-      \"containerOverrides\": [{
-        \"name\": \"migrate\",
-        \"command\": [\"bash\", \"-c\",
-          \"echo $SQL_B64 | base64 -d > /tmp/init.sql && PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U fusion -d fusiondb -f /tmp/init.sql\"
-        ]
-      }]
-    }" \
-    --task-definition "arn:aws:ecs:${AWS_REGION}:$(aws sts get-caller-identity --query Account --output text):task-definition/timescale-writer" \
+    --network-configuration "awsvpcConfiguration={subnets=[${SUBNET}],securityGroups=[${SG}],assignPublicIp=DISABLED}" \
+    --overrides "{\"containerOverrides\":[{\"name\":\"timescaledb\",\"command\":[\"bash\",\"-c\",\"${CMD}\"]}]}" \
+    --task-definition timescaledb \
     --query "tasks[0].taskArn" \
     --output text \
     --region "$AWS_REGION")
 
-echo "  Task started: $TASK_ARN"
-echo "  Waiting for migration to complete..."
+if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
+    echo "  ❌ Failed to start migration task"
+    exit 1
+fi
+
+echo "  Task: $TASK_ARN"
+echo "  Waiting for completion (up to 5 minutes)..."
 
 aws ecs wait tasks-stopped \
     --cluster "$CLUSTER" \
@@ -74,9 +113,15 @@ EXIT_CODE=$(aws ecs describe-tasks \
     --output text \
     --region "$AWS_REGION")
 
+# ── 6. Cleanup S3 ─────────────────────────────────────────────────────────────
+aws s3 rm "s3://${BUCKET}/init.sql" --region "$AWS_REGION" 2>/dev/null || true
+
 if [ "$EXIT_CODE" = "0" ]; then
     echo "  ✅ Migrations complete"
 else
-    echo "  ❌ Migration failed with exit code $EXIT_CODE"
+    echo "  ❌ Migration failed — exit code: $EXIT_CODE"
+    echo ""
+    echo "  View logs:"
+    echo "  aws logs tail /ecs/${PROJECT}/timescaledb --region ${AWS_REGION} --since 10m"
     exit 1
 fi

@@ -34,8 +34,16 @@ KAFKA_BOOTSTRAP  = os.getenv("KAFKA_BOOTSTRAP",  "kafka:9092")
 KAFKA_TOPICS     = os.getenv("KAFKA_TOPICS",
                               "metrics.fusion-reactor").split(",")
 KAFKA_GROUP_ID   = os.getenv("KAFKA_GROUP_ID",   "timescale-writer")
-PG_DSN           = os.getenv("PG_DSN",
+# Build DSN -- in ECS the password comes from PGPASSWORD secret
+# If PG_DSN already has a password use it, otherwise inject PGPASSWORD
+_pg_dsn_base     = os.getenv("PG_DSN",
                               "postgresql://fusion:fusion2026@timescaledb:5432/fusiondb")
+_pg_password     = os.getenv("PGPASSWORD", "")
+if _pg_password and "@" in _pg_dsn_base and ":" not in _pg_dsn_base.split("@")[0].split("//")[-1]:
+    # No password in DSN -- inject it
+    _parts = _pg_dsn_base.split("//", 1)
+    _pg_dsn_base = f"{_parts[0]}//{_parts[1].split('@')[0]}:{_pg_password}@{'@'.join(_parts[1].split('@')[1:])}"
+PG_DSN           = _pg_dsn_base
 BATCH_SIZE       = int(os.getenv("BATCH_SIZE",       "200"))
 FLUSH_INTERVAL_S = float(os.getenv("FLUSH_INTERVAL_S", "5"))
 
@@ -112,7 +120,7 @@ def flush_batch(conn, batch: list[dict]) -> int:
 
 def wait_for_kafka(bootstrap: str, retries: int = 20, delay: float = 3.0):
     import socket
-    host, port = bootstrap.split(":")
+    first_broker = bootstrap.split(",")[0]; host, port = first_broker.rsplit(":", 1)
     for i in range(retries):
         try:
             with socket.create_connection((host, int(port)), timeout=3):
