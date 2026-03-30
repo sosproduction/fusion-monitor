@@ -25,6 +25,23 @@ A **full-stack real-time monitoring platform** for a fusion reactor prototype, b
 
 > Designed to be extended to monitor **Kubernetes clusters**, **HPC GPU nodes**, and **industrial systemd hosts** by adding new Kafka producers. The consumer, storage, and visualisation layers require zero changes.
 
+## 📸 Screenshots
+
+### React Dashboard — Live Analog Gauges
+![Main Dashboard](docs/screenshots/dashboard-main.png)
+
+### Plasma Core — Analog Gauge Detail  
+![Plasma Gauges](docs/screenshots/dashboard-plasma-gauges.png)
+
+### Grafana — Operations Dashboard
+![Grafana](docs/screenshots/grafana-dashboard.png)
+
+### Kafka UI — Live Message Stream
+![Kafka](docs/screenshots/kafka-messages.png)
+
+### Prometheus — Scrape Targets
+![Prometheus](docs/screenshots/prometheus-targets.png)
+
 ---
 
 ## 📸 Dashboard
