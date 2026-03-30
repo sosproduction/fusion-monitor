@@ -424,7 +424,7 @@ export default function FusionDashboard() {
             ⚛ FUSION MONITOR
           </span>
           <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 11, color: "#2a5a7a" }}>
-            FRP-001 · TOKAMAK · NATIONAL FUSION RESEARCH CENTER
+            POLARIS · HELION ENERGY SYSTEMS
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 22 }}>

@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/bootstrap-aws.sh
-# Run ONCE before first terraform apply.
 # Creates S3 state bucket, DynamoDB lock table, ECR repos, and SSM secrets.
 # =============================================================================
 set -euo pipefail
 
-# ── Config — edit these ───────────────────────────────────────────────────────
 AWS_REGION="us-east-1"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 PROJECT="fusion-monitor"
@@ -18,7 +15,7 @@ echo "  Region:   $AWS_REGION"
 echo "  Project:  $PROJECT"
 echo ""
 
-# ── 1. Terraform remote state S3 bucket ──────────────────────────────────────
+# Terraform remote state S3 bucket
 echo "▶ Creating Terraform state S3 bucket..."
 #aws s3api create-bucket \
 #    --bucket "${PROJECT}-tfstate" \
@@ -55,7 +52,7 @@ aws s3api put-bucket-encryption \
 
 echo "  ✅ S3 state bucket: ${PROJECT}-tfstate"
 
-# ── 2. DynamoDB lock table ────────────────────────────────────────────────────
+# DynamoDB lock table
 echo "▶ Creating DynamoDB state lock table..."
 aws dynamodb create-table \
     --table-name "${PROJECT}-tflock" \
@@ -67,7 +64,7 @@ aws dynamodb create-table \
 
 echo "  ✅ DynamoDB lock table: ${PROJECT}-tflock"
 
-# ── 3. ECR Repositories (one per custom image) ────────────────────────────────
+# ECR Repositories (one per custom image)
 echo "▶ Creating ECR repositories..."
 for repo in fusion-producer prometheus-bridge timescale-writer fusion-ui; do
     aws ecr create-repository \
@@ -78,7 +75,7 @@ for repo in fusion-producer prometheus-bridge timescale-writer fusion-ui; do
     echo "  ✅ ECR: $repo"
 done
 
-# ── 4. SSM Parameter Store secrets ───────────────────────────────────────────
+# SSM Parameter Store secrets
 echo ""
 echo "▶ Storing secrets in SSM Parameter Store..."
 
@@ -101,7 +98,7 @@ aws ssm put-parameter \
 
 echo "  ✅ Secrets stored in SSM"
 
-# ── 5. Create terraform.tfvars ────────────────────────────────────────────────
+# Create terraform.tfvars 
 cat > infrastructure/terraform.tfvars << EOF
 aws_region  = "$AWS_REGION"
 project     = "$PROJECT"

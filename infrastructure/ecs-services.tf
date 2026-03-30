@@ -170,9 +170,6 @@ resource "aws_ecs_task_definition" "prometheus" {
       "--storage.tsdb.retention.time=15d",
       "--web.enable-lifecycle"
     ]
-    mountPoints = [
-      { sourceVolume = "prometheus-config", containerPath = "/etc/prometheus" }
-    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -183,13 +180,7 @@ resource "aws_ecs_task_definition" "prometheus" {
     }
   }])
 
-  volume {
-    name = "prometheus-config"
-    efs_volume_configuration {
-      file_system_id     = aws_efs_file_system.prometheus_config.id
-      transit_encryption = "ENABLED"
-    }
-  }
+
 }
 
 resource "aws_ecs_service" "prometheus" {

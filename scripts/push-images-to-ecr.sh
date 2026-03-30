@@ -3,9 +3,6 @@
 # scripts/push-images-to-ecr.sh
 # Pulls all third-party Docker Hub images used by the stack
 # and pushes them to ECR so ECS can pull them from within the VPC.
-#
-# Run this ONCE from your local machine (which has internet access).
-# After this all ECS tasks pull from ECR instead of Docker Hub.
 # =============================================================================
 set -euo pipefail
 
