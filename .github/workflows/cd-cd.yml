@@ -13,7 +13,7 @@ env:
 
 jobs:
 
-  # ── 1. Lint & build check ───────────────────────────────────────────────────
+  # Lint & build check
   test:
     name: Test & Lint
     runs-on: ubuntu-latest
@@ -50,7 +50,7 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-  # ── 2. Build & push to ECR (main branch only) ──────────────────────────────
+  # Build & push to ECR (main branch only)
   build-and-push:
     name: Build & Push Images to ECR
     runs-on: ubuntu-latest
@@ -114,7 +114,7 @@ jobs:
           name: image-tag
           path: image-tag.txt
 
-  # ── 3. Deploy to ECS ────────────────────────────────────────────────────────
+  # Deploy to ECS
   deploy:
     name: Deploy to ECS Fargate
     runs-on: ubuntu-latest

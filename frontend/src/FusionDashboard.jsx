@@ -113,7 +113,7 @@ function usePrometheusMetrics(intervalMs = 5000) {
   return { metrics, error, lastFetch, fetchCount };
 }
 
-// ── History hook ──────────────────────────────────────────────────────────────
+// History
 function useHistory(value, maxLen = 60) {
   const [hist, setHist] = useState([]);
   useEffect(() => {
@@ -122,7 +122,8 @@ function useHistory(value, maxLen = 60) {
   return hist;
 }
 
-// ── Analog Gauge (Canvas) ─────────────────────────────────────────────────────
+// Analog Gauge built with HTML 5 canvas but there may be a more elegant 
+// grafana built in or package to drop in for this in the future
 function AnalogGauge({ value, min, max, label, unit = "", zones, size = 160 }) {
   const canvasRef = useRef();
   const pct   = Math.max(0, Math.min(1, (value - min) / (max - min)));
@@ -237,7 +238,7 @@ function AnalogGauge({ value, min, max, label, unit = "", zones, size = 160 }) {
   );
 }
 
-// ── Horizontal Bar Gauge ──────────────────────────────────────────────────────
+// Horizontal Bar Gauge 
 function BarGauge({ value, min, max, label, unit = "", zones, width = 240 }) {
   const pct = Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
   let color = "#22cc88";
@@ -269,7 +270,7 @@ function BarGauge({ value, min, max, label, unit = "", zones, width = 240 }) {
   );
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
+// Stat Card
 function StatCard({ label, value, unit = "", color = "#7eeedd", sub, wide }) {
   const display = value == null ? "--"
     : Math.abs(value) >= 1e18 ? value.toExponential(3)
@@ -293,7 +294,7 @@ function StatCard({ label, value, unit = "", color = "#7eeedd", sub, wide }) {
   );
 }
 
-// ── Sparkline ─────────────────────────────────────────────────────────────────
+// Sparkline 
 function Sparkline({ history, color = "#7eeedd", height = 50, width = 220, label }) {
   const canvasRef = useRef();
   useEffect(() => {
@@ -330,7 +331,7 @@ function Sparkline({ history, color = "#7eeedd", height = 50, width = 220, label
   );
 }
 
-// ── Section Header ─────────────────────────────────────────────────────────────
+// Section Header 
 function SectionHeader({ icon, title }) {
   return (
     <div style={{
@@ -373,7 +374,7 @@ function ConnectionBanner({ error, fetchCount, lastFetch }) {
   return null;
 }
 
-// ── Main Dashboard ─────────────────────────────────────────────────────────────
+// Main Dashboard 
 export default function FusionDashboard() {
   const { metrics: m, error, lastFetch, fetchCount } = usePrometheusMetrics(5000);
 
@@ -410,7 +411,7 @@ export default function FusionDashboard() {
         background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,10,30,0.07) 2px,rgba(0,10,30,0.07) 4px)"
       }} />
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <header style={{
         background: "linear-gradient(90deg,#030810 0%,#07152a 50%,#030810 100%)",
         borderBottom: "1px solid #0e2a4a",
@@ -455,7 +456,7 @@ export default function FusionDashboard() {
 
         <ConnectionBanner error={error} fetchCount={fetchCount} lastFetch={lastFetch} />
 
-        {/* ── PLASMA CORE ─────────────────────────────────────────────────── */}
+        {/* PLASMA CORE */}
         <section>
           <SectionHeader icon="🔥" title="Plasma Core" />
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -481,7 +482,7 @@ export default function FusionDashboard() {
           </div>
         </section>
 
-        {/* ── MAGNETIC + THERMAL ────────────────────────────────────────────── */}
+        {/* MAGNETIC + THERMAL */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
 
           <section>
@@ -513,7 +514,7 @@ export default function FusionDashboard() {
           </section>
         </div>
 
-        {/* ── POWER + TRITIUM/RAD ───────────────────────────────────────────── */}
+        {/* POWER + TRITIUM/RAD */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
 
           <section>
@@ -555,7 +556,7 @@ export default function FusionDashboard() {
           </section>
         </div>
 
-        {/* ── KPI STRIP ────────────────────────────────────────────────────── */}
+        {/* KPI STRIP */}
         <section>
           <SectionHeader icon="📊" title="Performance KPIs" />
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -572,7 +573,7 @@ export default function FusionDashboard() {
 
       </div>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      {/* Footer */}
       <footer style={{
         borderTop: "1px solid #0a2035", padding: "8px 22px", marginTop: 8,
         fontFamily: "'Share Tech Mono',monospace", fontSize: 9, color: "#1a4060",

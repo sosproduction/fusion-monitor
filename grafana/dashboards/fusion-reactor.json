@@ -1,7 +1,7 @@
 {
   "uid": "fusion-reactor-v1",
-  "title": "Fusion Reactor FRP-001 — Live Monitor",
-  "description": "Real-time telemetry dashboard for Tokamak prototype FRP-001",
+  "title": "Fusion Reactor — Live Monitor",
+  "description": "Real-time telemetry dashboard for Polaris prototype",
   "tags": ["fusion", "plasma", "tokamak"],
   "timezone": "browser",
   "refresh": "5s",

@@ -1,4 +1,4 @@
-# ⚛️ Fusion Monitor — FRP-001 Live Telemetry Stack
+# ⚛️ Fusion Monitor — Polaris Live Telemetry Stack
 
 ## 🌐 Live Demo URLs
 
@@ -21,7 +21,7 @@ The stack is accessible at these public URLs:
 [![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PostgreSQL-FDB515?logo=postgresql&logoColor=black)](https://www.timescale.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org/)
 
-A **full-stack real-time monitoring platform** for a Tokamak fusion reactor prototype (FRP-001), built on a production-grade observability pipeline. Simulates 57 live sensor metrics across plasma, magnetic, thermal, tritium, radiation, and power systems — flowing through Kafka, stored in three data tiers, and visualised in a custom React dashboard with analog needle gauges.
+A **full-stack real-time monitoring platform** for a fusion reactor prototype, built on a production-grade observability pipeline. Simulates 57 live sensor metrics across plasma, magnetic, thermal, tritium, radiation, and power systems — flowing through Kafka, stored in three data tiers, and visualised in a custom React dashboard with analog needle gauges.
 
 > Designed to be extended to monitor **Kubernetes clusters**, **HPC GPU nodes**, and **industrial systemd hosts** by adding new Kafka producers. The consumer, storage, and visualisation layers require zero changes.
 
@@ -151,9 +151,9 @@ Every message published to Kafka uses this envelope format:
   "timestamp": "2026-03-09T05:00:00Z",
   "tags": {
     "reactor_id":   "FRP-001",
-    "facility":     "National Fusion Research Center",
-    "reactor_type": "Tokamak",
-    "location":     "Building-4, Bay-2"
+    "facility":     "Helion Engergy",
+    "reactor_type": "Polaris",
+    "location":     "Building-1"
   }
 }
 ```
@@ -167,8 +167,8 @@ The complete reactor state is represented as a nested JSON document:
   "fusion_reactor": {
     "metadata": {
       "reactor_id": "FRP-001",
-      "facility_name": "National Fusion Research Center",
-      "reactor_type": "Tokamak",
+      "facility_name": "Helion Energy",
+      "reactor_type": "Polaris",
       "operational_status": "active",
       "last_updated": "2026-03-06T14:32:00Z",
       "uptime_seconds": 345600,
@@ -474,25 +474,6 @@ docker compose down --volumes
 | 🐘 **TimescaleDB** | `localhost:5432` | db `fusiondb` user `fusion` / `fusion2026` |
 | 📦 **Kafka Broker** (host) | `localhost:29092` | — |
 
-### pgAdmin — Connect to TimescaleDB
-
-After logging into pgAdmin at http://localhost:5050:
-
-1. Right-click **Servers → Register → Server**
-2. **General tab** — Name: `TimescaleDB`
-3. **Connection tab:**
-   - Host: `timescaledb`
-   - Port: `5432`
-   - Database: `fusiondb`
-   - Username: `fusion`
-   - Password: `fusion2026`
-
-### Grafana — Reset password
-
-```bash
-docker exec -it grafana grafana-cli admin reset-admin-password fusion2026
-```
-
 ---
 
 ## Querying Each Data Tier
@@ -509,18 +490,6 @@ curl "http://localhost:9090/api/v1/query?query=fusion_plasma_temperature_keV"
 curl "http://localhost:9090/api/v1/query_range?\
 query=fusion_plasma_temperature_keV\
 &start=$(date -v-1H +%s)&end=$(date +%s)&step=30"
-```
-
-Useful PromQL:
-```promql
-# Current Q factor
-fusion_plasma_gain_Q
-
-# Disruption risk above warning threshold
-fusion_mag_disruption_risk_percent > 5
-
-# 5-minute average fusion power
-avg_over_time(fusion_plasma_fusion_power_MW[5m])
 ```
 
 ### Tier 2 — Warm: TimescaleDB (1 year)
@@ -565,19 +534,6 @@ FROM meta.thresholds ORDER BY origin, metric_name;
 -- Alert history
 SELECT * FROM meta.alert_history ORDER BY fired_at DESC LIMIT 20;
 ```
-
----
-
-## Extending to New Data Sources
-
-The architecture is designed so that adding Kubernetes or HPC monitoring requires **only a new producer**. The entire consumer, storage, and visualisation stack stays unchanged.
-
-### Adding a Kubernetes producer
-
-1. Create `producers/kubernetes/k8s_producer.py` — reads from `kube-state-metrics` or the K8s API
-2. Set `"origin": "kubernetes"` in all envelopes
-3. Publish to topic `metrics.kubernetes`
-4. Add to `docker-compose.yml`:
 
 ---
 
